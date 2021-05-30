@@ -2,7 +2,7 @@
 const express = require("express");
 const app = express();
 const cors = require('cors')
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT || 4000
 const bodyParser = require('body-parser');
 const apiRouter = require('./routes/apiRoutes')
 
@@ -14,4 +14,4 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use('/',apiRouter)
 
-app.listen(PORT, () => console.log(`Example app listening on port ${PORT}!`));
+app.listen(PORT, () => console.log(` app listening on port ${PORT}!`));
