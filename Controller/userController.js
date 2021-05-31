@@ -2,33 +2,88 @@ const db =  require('../config/connexion')
 const express = require("express");
 const jwt = require("jsonwebtoken")
 const app = express();
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+
 app.use(express.json({ extended: false }));
 
 //signup route api
 exports.signupUser = async (req, res) => {
 
-    const { email, password } = req.body;
+    const { email,username, password } = req.body;
    
-    const sqlVerify = "SELECT * FROM users WHERE email=?"
-    const sql = "INSERT INTO users(email,password) VALUES(?,?)"
-  
-    db.query(sqlVerify,email,(err,rows)=>{
+    const sqlVerify = 'SELECT * FROM user WHERE email=? OR username=?'
+    const sql = "INSERT INTO user(email,username,password) VALUES(?,?,?)"
+
+    db.query(sqlVerify,[email,username],(err,rows)=>{
+
       if(err){
         return res.json('Insert failed!')
       }
-      if(rows.length >0){
+      if(rows[0].email == email){
         res.json({message:"Email already taken"})
       }
+      else if (rows[0].username == username){
+        res.json({message:"Username already taken"})
+      }
       else{
-        db.query(sql,[email,password],(err,result)=>{
-          if(err){
-            return res.json(err)
-          }
-         var token = jwt.sign({email:2},"password")
-        return res.json({ token:token});  
+
+        bcrypt.hash(password,saltRounds,function(err,hash){
+
+          if(err) return console.error(err)
+    
+          db.query(sql,[email,username,hash],(err,rows)=>{
+            console.log(rows)
+    
+            return res.json({
+              email:email,
+              username:username,
+              password:hash
+            });
+    
+          })
         })
       }
-    })    
+    })
+
+};
+
+exports.login = async (req, res) => {
+
+  const { email,username, password } = req.body;
+  
+  const sql = "SELECT * FROM user WHERE email=? OR username=?"
+
+    db.query(sql,[email,username],(err,rows)=>{
+
+      if(err){
+        res.send('Login failed!')
+      }
+      if(rows.length>0){
+
+        bcrypt.compare(password,rows[0].password,(err,response)=>{
+          if(response){
+
+            console.log(rows[0])
+            var token = jwt.sign({id:rows[0].id},"password")
+  
+            return res.json({
+              id:rows[0].id,
+              email:email,
+              username:username,
+              password:password,
+              token:token
+            });
+  
+          }
+          return res.json({message:'Wrong password please enter the correct password!'})
+        })
+        
+      }
+      else{
+        return res.json({message : "no user found with that email"})
+      }
+    })
 };
 
 exports.deleteUser = async (req, res) => {
@@ -87,37 +142,5 @@ exports.fetchUsers = async (req, res) => {
   
 };
 
-exports.login = async (req, res) => {
 
-  const { email, password } = req.body;
-  
-  const sql = "SELECT * FROM users WHERE email=?"
-
-    db.query(sql,email,(err,rows)=>{
-
-      if(err){
-        res.send('Login failed!')
-      }
-      if(rows.length>0){
-        if(rows[0].password == password){
-          console.log(rows[0])
-          var token = jwt.sign({id:rows[0].id},"password")
-
-          return res.json({
-            email:email,
-            password:password,
-            token:token
-          });
-
-        }
-        else{
-          return res.json({message:"password is not correct"})
-        } 
-      }
-      else{
-        return res.json({message : "no user found with that email"})
-      }
-    })
-
-};
 
